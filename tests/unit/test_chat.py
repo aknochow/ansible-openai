@@ -48,15 +48,18 @@ def make_choice(content="", reasoning_content=None, finish_reason="stop", tool_c
     return choice
 
 
-def make_response(choices, usage_kwargs=None):
+def make_response(choices, usage_kwargs=None, usage_is_none=False):
     response = MagicMock()
     response.choices = choices
-    usage = MagicMock()
-    defaults = dict(prompt_tokens=10, completion_tokens=5, total_tokens=15)
-    defaults.update(usage_kwargs or {})
-    for k, v in defaults.items():
-        setattr(usage, k, v)
-    response.usage = usage
+    if usage_is_none:
+        response.usage = None
+    else:
+        usage = MagicMock()
+        defaults = dict(prompt_tokens=10, completion_tokens=5, total_tokens=15)
+        defaults.update(usage_kwargs or {})
+        for k, v in defaults.items():
+            setattr(usage, k, v)
+        response.usage = usage
     response.model_dump.return_value = {"id": "chatcmpl_123", "object": "chat.completion"}
     return response
 
@@ -188,6 +191,21 @@ class TestFlattenResponse:
 
         assert len(result["tool_calls"]) == 2
         assert result["tool_calls"][1]["name"] == "get_time"
+
+    def test_none_usage_does_not_crash(self, mock_openai):
+        # Regression check for a real review finding: response.usage.
+        # prompt_tokens was accessed unconditionally, which would raise
+        # an unhandled AttributeError on a server that omits usage
+        # entirely. usage itself must stay a dict (matches the RETURN
+        # doc's "returned: always"), with null sub-fields instead.
+        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+            flatten_response,
+        )
+
+        response = make_response([make_choice(content="hi")], usage_is_none=True)
+        result = flatten_response(response)
+
+        assert result["usage"] == {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None}
 
     def test_empty_choices_raises_value_error(self, mock_openai):
         # Regression check for a real review finding: response.choices[0]

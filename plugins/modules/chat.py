@@ -263,17 +263,28 @@ def flatten_response(response, parse_structured=False):
         except (json.JSONDecodeError, ValueError):
             structured = None
 
+    # Some OpenAI-compatible servers omit usage entirely under certain
+    # request shapes (llama-server always includes it under normal
+    # non-streaming use, but this module doesn't gate the extra_body
+    # escape hatch, so a caller-injected field could change that). Keep
+    # `usage` itself always a dict -- matches the RETURN doc's "returned:
+    # always" -- with null sub-fields rather than crashing.
     usage = response.usage
+    usage_dict = (
+        dict(
+            prompt_tokens=usage.prompt_tokens,
+            completion_tokens=usage.completion_tokens,
+            total_tokens=usage.total_tokens,
+        )
+        if usage is not None
+        else dict(prompt_tokens=None, completion_tokens=None, total_tokens=None)
+    )
     result = dict(
         response=response.model_dump(),
         text=text,
         tool_calls=tool_calls,
         finish_reason=choice.finish_reason,
-        usage=dict(
-            prompt_tokens=usage.prompt_tokens,
-            completion_tokens=usage.completion_tokens,
-            total_tokens=usage.total_tokens,
-        ),
+        usage=usage_dict,
     )
     if reasoning:
         result["reasoning"] = reasoning
@@ -305,6 +316,12 @@ def main():
     )
 
     client = get_client(module)
+    # Imported here, not at module top-level, deliberately -- get_client()
+    # already fail_json()'d (which exits) if the openai SDK isn't
+    # installed, so this is the earliest point the import is guaranteed
+    # safe. A top-level import would defeat that clean-failure path by
+    # crashing on module load instead, same reason both sibling
+    # collections keep their provider SDK imports out of top-level scope.
     from openai import OpenAIError
 
     kwargs = dict(
