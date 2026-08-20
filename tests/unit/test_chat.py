@@ -189,6 +189,21 @@ class TestFlattenResponse:
         assert len(result["tool_calls"]) == 2
         assert result["tool_calls"][1]["name"] == "get_time"
 
+    def test_empty_choices_raises_value_error(self, mock_openai):
+        # Regression check for a real review finding: response.choices[0]
+        # was accessed unconditionally, which would raise an unhandled
+        # IndexError (escaping main()'s OpenAIError-only except clause) on
+        # an empty choices list. Must raise a clean, catchable ValueError
+        # instead.
+        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+            flatten_response,
+        )
+
+        response = make_response([])
+
+        with pytest.raises(ValueError):
+            flatten_response(response)
+
     def test_malformed_arguments_falls_back_to_raw_string(self, mock_openai):
         # Defensive fallback -- should not happen under grammar-constrained
         # tool-call decoding, but must not crash the whole call if it did.
@@ -219,7 +234,7 @@ class TestMainReportsChanged:
             "response_format": None,
             "tools": None,
             "tool_choice": None,
-            "enable_thinking": False,
+            "enable_thinking": None,
             "extra_body": None,
             "base_url": "http://127.0.0.1:8080/v1",
             "api_key": "not-needed",
@@ -235,6 +250,38 @@ class TestMainReportsChanged:
 
         fake_module.exit_json.assert_called_once()
         assert fake_module.exit_json.call_args.kwargs["changed"] is False
+
+
+class TestMainHandlesEmptyChoicesCleanly:
+    def test_empty_choices_fails_cleanly_not_a_crash(self, mock_openai, monkeypatch):
+        from ansible_collections.aknochow.llama.plugins.modules import chat as chat_module
+
+        fake_module = MagicMock()
+        fake_module.params = {
+            "model": "qwen3-8b",
+            "messages": [{"role": "user", "content": "hi"}],
+            "max_tokens": 100,
+            "temperature": None,
+            "top_p": None,
+            "top_k": None,
+            "stop_sequences": None,
+            "response_format": None,
+            "tools": None,
+            "tool_choice": None,
+            "enable_thinking": None,
+            "extra_body": None,
+            "base_url": "http://127.0.0.1:8080/v1",
+            "api_key": "not-needed",
+            "timeout": 120.0,
+            "max_retries": 2,
+        }
+        mock_openai.OpenAI.return_value.chat.completions.create.return_value = make_response([])
+        monkeypatch.setattr(chat_module, "AnsibleModule", lambda **kwargs: fake_module)
+
+        chat_module.main()
+
+        fake_module.fail_json.assert_called_once()
+        fake_module.exit_json.assert_not_called()
 
 
 class TestMainRequestConstruction:
@@ -253,7 +300,7 @@ class TestMainRequestConstruction:
             "response_format": None,
             "tools": None,
             "tool_choice": None,
-            "enable_thinking": False,
+            "enable_thinking": None,
             "extra_body": None,
             "base_url": "http://127.0.0.1:8080/v1",
             "api_key": "not-needed",
@@ -282,6 +329,31 @@ class TestMainRequestConstruction:
         call_kwargs = self._run_main(mock_openai, monkeypatch, {"enable_thinking": True})
 
         assert call_kwargs["extra_body"]["chat_template_kwargs"]["enable_thinking"] is True
+
+    def test_extra_body_enable_thinking_honored_when_top_level_unset(self, mock_openai, monkeypatch):
+        # Regression check for a real review finding: a caller setting
+        # enable_thinking inside extra_body.chat_template_kwargs while
+        # leaving the top-level param untouched must NOT have that
+        # explicit value silently clobbered back to the false default.
+        call_kwargs = self._run_main(
+            mock_openai,
+            monkeypatch,
+            {"enable_thinking": None, "extra_body": {"chat_template_kwargs": {"enable_thinking": True}}},
+        )
+
+        assert call_kwargs["extra_body"]["chat_template_kwargs"]["enable_thinking"] is True
+
+    def test_top_level_enable_thinking_wins_over_extra_body_when_both_set(self, mock_openai, monkeypatch):
+        # The dedicated param is still authoritative when the caller
+        # explicitly sets both -- extra_body only fills the gap when the
+        # top-level param was left unset.
+        call_kwargs = self._run_main(
+            mock_openai,
+            monkeypatch,
+            {"enable_thinking": False, "extra_body": {"chat_template_kwargs": {"enable_thinking": True}}},
+        )
+
+        assert call_kwargs["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
 
     def test_top_k_routes_through_extra_body(self, mock_openai, monkeypatch):
         call_kwargs = self._run_main(mock_openai, monkeypatch, {"top_k": 20})

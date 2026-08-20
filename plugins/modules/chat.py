@@ -85,8 +85,10 @@ options:
         never returned in RV(text) when this is true, and can exhaust the whole budget on
         reasoning before producing any answer at all (RV(finish_reason)=C(length) with empty
         RV(text)). Raise O(max_tokens) substantially if you enable this.
+      - If left unset here but also set inside O(extra_body)'s C(chat_template_kwargs.enable_thinking),
+        that explicit value is honored instead of the V(false) default -- this parameter only
+        overrides O(extra_body) when it is itself explicitly set.
     type: bool
-    default: false
   extra_body:
     description:
       - Arbitrary additional fields merged into the request body -- an escape hatch for
@@ -242,6 +244,8 @@ def flatten_tool_calls(message):
 
 
 def flatten_response(response, parse_structured=False):
+    if not response.choices:
+        raise ValueError("llama-server returned an empty choices list")
     choice = response.choices[0]
     text = choice.message.content or ""
     reasoning = getattr(choice.message, "reasoning_content", None)
@@ -290,7 +294,7 @@ def main():
         response_format=dict(type="dict"),
         tools=dict(type="list", elements="dict"),
         tool_choice=dict(type="raw"),
-        enable_thinking=dict(type="bool", default=False),
+        enable_thinking=dict(type="bool"),
         extra_body=dict(type="dict"),
     )
     argument_spec.update(PROVIDER_ARGSPEC)
@@ -322,13 +326,20 @@ def main():
     # choose-serving-setup-and-model-artifact / design-module-interface-
     # mirroring-siblings: a thinking-capable model left on its template
     # default can silently burn the whole max_tokens budget on reasoning
-    # and never emit an answer).
+    # and never emit an answer). Precedence: an explicitly-set top-level
+    # enable_thinking always wins; otherwise an explicit value the caller
+    # already put in extra_body.chat_template_kwargs is honored instead of
+    # being silently clobbered back to the false default; only fall back
+    # to false when neither was set anywhere.
     extra_body = dict(module.params.get("extra_body") or {})
     top_k = module.params.get("top_k")
     if top_k is not None:
         extra_body["top_k"] = top_k
     chat_template_kwargs = dict(extra_body.get("chat_template_kwargs") or {})
-    chat_template_kwargs["enable_thinking"] = module.params["enable_thinking"]
+    enable_thinking = module.params.get("enable_thinking")
+    if enable_thinking is None:
+        enable_thinking = chat_template_kwargs.get("enable_thinking", False)
+    chat_template_kwargs["enable_thinking"] = enable_thinking
     extra_body["chat_template_kwargs"] = chat_template_kwargs
     kwargs["extra_body"] = extra_body
 
@@ -342,7 +353,7 @@ def main():
             changed=False,
             **flatten_response(response, parse_structured=bool(module.params.get("response_format"))),
         )
-    except OpenAIError as e:
+    except (OpenAIError, ValueError) as e:
         module.fail_json(msg=str(e))
 
 
