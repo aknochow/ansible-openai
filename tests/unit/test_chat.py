@@ -341,6 +341,69 @@ class TestMainHandlesNoneClientCleanly:
         mock_openai.OpenAI.return_value.chat.completions.create.assert_not_called()
 
 
+class TestMainRedactsSensitiveValuesFromExceptionMessages:
+    def _run_main_with_exception(self, mock_openai, monkeypatch, exception_message):
+        from ansible_collections.aknochow.llama.plugins.modules import chat as chat_module
+
+        fake_module = MagicMock()
+        fake_module.params = {
+            "model": "qwen3-8b",
+            "messages": [{"role": "user", "content": "hi"}],
+            "max_tokens": 100,
+            "temperature": None,
+            "top_p": None,
+            "top_k": None,
+            "stop_sequences": None,
+            "response_format": None,
+            "tools": None,
+            "tool_choice": None,
+            "enable_thinking": None,
+            "extra_body": None,
+            "base_url": "http://internal-llama-host.example.com:8080/v1",
+            "api_key": "real-secret-key-value",
+            "timeout": 120.0,
+            "max_retries": 2,
+        }
+        monkeypatch.setattr(chat_module, "AnsibleModule", lambda **kwargs: fake_module)
+        mock_openai.OpenAI.return_value.chat.completions.create.side_effect = (
+            mock_openai.OpenAIError(exception_message)
+        )
+
+        chat_module.main()
+        return fake_module
+
+    def test_base_url_redacted_from_exception_message(self, mock_openai, monkeypatch):
+        # Regression check for a real review finding: OpenAI SDK exception
+        # text can embed the full request URL. This is an actual
+        # redaction, not a cosmetic message rewrap.
+        fake_module = self._run_main_with_exception(
+            mock_openai,
+            monkeypatch,
+            "Connection error to http://internal-llama-host.example.com:8080/v1: refused",
+        )
+
+        fake_module.fail_json.assert_called_once()
+        msg = fake_module.fail_json.call_args.kwargs["msg"]
+        assert "internal-llama-host.example.com" not in msg
+        assert "<base_url>" in msg
+
+    def test_api_key_redacted_from_exception_message(self, mock_openai, monkeypatch):
+        fake_module = self._run_main_with_exception(
+            mock_openai,
+            monkeypatch,
+            "Authorization failed for key real-secret-key-value",
+        )
+
+        msg = fake_module.fail_json.call_args.kwargs["msg"]
+        assert "real-secret-key-value" not in msg
+        assert "<api_key>" in msg
+
+    def test_message_without_sensitive_values_passes_through_unchanged(self, mock_openai, monkeypatch):
+        fake_module = self._run_main_with_exception(mock_openai, monkeypatch, "Request timed out")
+
+        assert fake_module.fail_json.call_args.kwargs["msg"] == "Request timed out"
+
+
 class TestMainRequestConstruction:
     def _run_main(self, mock_openai, monkeypatch, params_overrides):
         from ansible_collections.aknochow.llama.plugins.modules import chat as chat_module

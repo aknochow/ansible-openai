@@ -379,7 +379,16 @@ def main():
             **flatten_response(response, parse_structured=bool(module.params.get("response_format"))),
         )
     except (OpenAIError, ValueError) as e:
-        module.fail_json(msg=str(e))
+        # Redact base_url/api_key if the SDK's exception text happens to
+        # embed them verbatim (e.g. a connection error including the full
+        # request URL) -- a real redaction of the two known-sensitive
+        # values, not just a cosmetic message rewrap.
+        msg = str(e)
+        for sensitive_key in ("api_key", "base_url"):
+            value = module.params.get(sensitive_key)
+            if value and value in msg:
+                msg = msg.replace(value, f"<{sensitive_key}>")
+        module.fail_json(msg=msg)
 
 
 if __name__ == "__main__":
