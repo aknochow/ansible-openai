@@ -103,6 +103,44 @@ class TestGetClient:
         assert call_kwargs["timeout"] == 120.0
         assert call_kwargs["max_retries"] == 2
 
+    def test_https_base_url_is_accepted(self, mock_openai):
+        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+            get_client,
+        )
+
+        module = MagicMock()
+        module.params = {
+            "base_url": "https://internal-llama.example.com:8443/v1",
+            "api_key": "not-needed",
+            "timeout": 120.0,
+            "max_retries": 2,
+        }
+
+        get_client(module)
+        mock_openai.OpenAI.assert_called_once()
+        module.fail_json.assert_not_called()
+
+    def test_invalid_base_url_scheme_fails_cleanly(self, mock_openai):
+        # Regression check for a real review finding: base_url was passed
+        # straight to the SDK with no scheme validation at all.
+        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+            get_client,
+        )
+
+        module = MagicMock()
+        module.params = {
+            "base_url": "file:///etc/passwd",
+            "api_key": "not-needed",
+            "timeout": 120.0,
+            "max_retries": 2,
+        }
+
+        result = get_client(module)
+        module.fail_json.assert_called_once()
+        assert "http" in module.fail_json.call_args.kwargs["msg"]
+        assert result is None
+        mock_openai.OpenAI.assert_not_called()
+
     def test_missing_sdk_fails_cleanly(self, mock_openai, monkeypatch):
         import builtins
 

@@ -305,6 +305,7 @@ def main():
     )
 
     client = get_client(module)
+    from openai import OpenAIError
 
     kwargs = dict(
         model=module.params["model"],
@@ -344,8 +345,6 @@ def main():
     kwargs["extra_body"] = extra_body
 
     try:
-        from openai import OpenAIError
-
         response = client.chat.completions.create(**kwargs)
         # A chat completion call never mutates infrastructure state -- it's
         # a query, same as the aknochow.claude/aknochow.gemini modules.

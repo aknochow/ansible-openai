@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
 from ansible.module_utils.basic import AnsibleModule, env_fallback
 
 PROVIDER_ARGSPEC = dict(
@@ -31,13 +33,19 @@ def get_client(module: AnsibleModule):
         )
         return
 
+    base_url = module.params["base_url"]
+    scheme = urlparse(base_url).scheme
+    if scheme not in ("http", "https"):
+        module.fail_json(msg=f"base_url must use http or https, got: {base_url!r}")
+        return
+
     timeout = module.params.get("timeout") or 120.0
     max_retries = module.params.get("max_retries")
     if max_retries is None:
         max_retries = 2
 
     return OpenAI(
-        base_url=module.params["base_url"],
+        base_url=base_url,
         api_key=module.params["api_key"],
         timeout=timeout,
         max_retries=max_retries,
