@@ -34,13 +34,20 @@ def get_client(module: AnsibleModule):
         return
 
     base_url = module.params["base_url"]
-    scheme = urlparse(base_url).scheme
+    parsed_base_url = urlparse(base_url)
+    scheme = parsed_base_url.scheme
     if scheme not in ("http", "https"):
         # Echo only the scheme, not the full base_url -- it may carry
         # embedded credentials (e.g. https://user:pass@host/) that
         # shouldn't land in Ansible task output/logs.
         module.fail_json(msg=f"base_url must use http or https, got scheme: {scheme!r}")
         return
+    if scheme == "http" and parsed_base_url.hostname not in ("127.0.0.1", "localhost", "::1"):
+        module.warn(
+            "base_url uses plain http to a non-loopback host -- api_key and message "
+            "content will be sent in cleartext over the network. Use https, or "
+            "confirm this network path is trusted."
+        )
 
     timeout = module.params.get("timeout") or 120.0
     max_retries = module.params.get("max_retries")

@@ -268,7 +268,9 @@ def flatten_response(response, parse_structured=False):
     # non-streaming use, but this module doesn't gate the extra_body
     # escape hatch, so a caller-injected field could change that). Keep
     # `usage` itself always a dict -- matches the RETURN doc's "returned:
-    # always" -- with null sub-fields rather than crashing.
+    # always" -- with 0 sub-fields rather than crashing. 0, not None,
+    # to match the RETURN doc's declared `type: int` and avoid breaking
+    # numeric consumers (e.g. a `| map('int') | sum` filter chain).
     usage = response.usage
     usage_dict = (
         dict(
@@ -277,7 +279,7 @@ def flatten_response(response, parse_structured=False):
             total_tokens=usage.total_tokens,
         )
         if usage is not None
-        else dict(prompt_tokens=None, completion_tokens=None, total_tokens=None)
+        else dict(prompt_tokens=0, completion_tokens=0, total_tokens=0)
     )
     result = dict(
         response=response.model_dump(),

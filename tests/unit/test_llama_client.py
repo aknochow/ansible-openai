@@ -120,6 +120,62 @@ class TestGetClient:
         mock_openai.OpenAI.assert_called_once()
         module.fail_json.assert_not_called()
 
+    def test_plain_http_to_loopback_does_not_warn(self, mock_openai):
+        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+            get_client,
+        )
+
+        module = MagicMock()
+        module.params = {
+            "base_url": "http://127.0.0.1:8080/v1",
+            "api_key": "not-needed",
+            "timeout": 120.0,
+            "max_retries": 2,
+        }
+
+        get_client(module)
+        module.warn.assert_not_called()
+
+    def test_plain_http_to_remote_host_warns(self, mock_openai):
+        # Regression check for a real review finding: no warning existed
+        # for plain http to a non-loopback host, which sends api_key and
+        # message content in cleartext over the network.
+        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+            get_client,
+        )
+
+        module = MagicMock()
+        module.params = {
+            "base_url": "http://example.com:8080/v1",
+            "api_key": "not-needed",
+            "timeout": 120.0,
+            "max_retries": 2,
+        }
+
+        get_client(module)
+        module.warn.assert_called_once()
+        assert "cleartext" in module.warn.call_args.args[0]
+        # A warning is advisory, not a hard failure -- the client is
+        # still constructed.
+        mock_openai.OpenAI.assert_called_once()
+        module.fail_json.assert_not_called()
+
+    def test_https_to_remote_host_does_not_warn(self, mock_openai):
+        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+            get_client,
+        )
+
+        module = MagicMock()
+        module.params = {
+            "base_url": "https://example.com/v1",
+            "api_key": "not-needed",
+            "timeout": 120.0,
+            "max_retries": 2,
+        }
+
+        get_client(module)
+        module.warn.assert_not_called()
+
     def test_invalid_base_url_scheme_fails_cleanly(self, mock_openai):
         # Regression check for a real review finding: base_url was passed
         # straight to the SDK with no scheme validation at all.
@@ -151,7 +207,7 @@ class TestGetClient:
 
         module = MagicMock()
         module.params = {
-            "base_url": "ftp://secret-user:hunter2@internal-host/v1",
+            "base_url": "ftp://placeholder-user:placeholder-pass@placeholder-host/v1",
             "api_key": "not-needed",
             "timeout": 120.0,
             "max_retries": 2,
@@ -159,9 +215,9 @@ class TestGetClient:
 
         get_client(module)
         msg = module.fail_json.call_args.kwargs["msg"]
-        assert "hunter2" not in msg
-        assert "secret-user" not in msg
-        assert "internal-host" not in msg
+        assert "placeholder-pass" not in msg
+        assert "placeholder-user" not in msg
+        assert "placeholder-host" not in msg
         assert "ftp" in msg
 
     def test_missing_sdk_fails_cleanly(self, mock_openai, monkeypatch):

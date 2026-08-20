@@ -197,7 +197,8 @@ class TestFlattenResponse:
         # prompt_tokens was accessed unconditionally, which would raise
         # an unhandled AttributeError on a server that omits usage
         # entirely. usage itself must stay a dict (matches the RETURN
-        # doc's "returned: always"), with null sub-fields instead.
+        # doc's "returned: always"), with 0 sub-fields (matching the
+        # declared type: int) instead of crashing or going null.
         from ansible_collections.aknochow.llama.plugins.modules.chat import (
             flatten_response,
         )
@@ -205,7 +206,7 @@ class TestFlattenResponse:
         response = make_response([make_choice(content="hi")], usage_is_none=True)
         result = flatten_response(response)
 
-        assert result["usage"] == {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None}
+        assert result["usage"] == {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
     def test_empty_choices_raises_value_error(self, mock_openai):
         # Regression check for a real review finding: response.choices[0]
