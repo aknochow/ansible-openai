@@ -141,6 +141,29 @@ class TestGetClient:
         assert result is None
         mock_openai.OpenAI.assert_not_called()
 
+    def test_invalid_scheme_error_does_not_leak_the_full_url(self, mock_openai):
+        # Regression check for a real review finding: the error message
+        # must not echo the raw base_url back, since it could carry
+        # embedded credentials (e.g. https://user:pass@host/).
+        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+            get_client,
+        )
+
+        module = MagicMock()
+        module.params = {
+            "base_url": "ftp://secret-user:hunter2@internal-host/v1",
+            "api_key": "not-needed",
+            "timeout": 120.0,
+            "max_retries": 2,
+        }
+
+        get_client(module)
+        msg = module.fail_json.call_args.kwargs["msg"]
+        assert "hunter2" not in msg
+        assert "secret-user" not in msg
+        assert "internal-host" not in msg
+        assert "ftp" in msg
+
     def test_missing_sdk_fails_cleanly(self, mock_openai, monkeypatch):
         import builtins
 

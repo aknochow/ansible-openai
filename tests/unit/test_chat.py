@@ -302,6 +302,44 @@ class TestMainHandlesEmptyChoicesCleanly:
         fake_module.exit_json.assert_not_called()
 
 
+class TestMainHandlesNoneClientCleanly:
+    def test_none_client_returns_without_crashing(self, mock_openai, monkeypatch):
+        # Defensive guard for a recurring review theme: get_client() only
+        # ever returns None in real Ansible execution after fail_json()
+        # has already called sys.exit() -- unreachable there -- but must
+        # not blow up with an AttributeError on client.chat... if it ever
+        # did return None (e.g. a mocked, non-exiting fail_json).
+        from ansible_collections.aknochow.llama.plugins.modules import chat as chat_module
+
+        fake_module = MagicMock()
+        fake_module.params = {
+            "model": "qwen3-8b",
+            "messages": [{"role": "user", "content": "hi"}],
+            "max_tokens": 100,
+            "temperature": None,
+            "top_p": None,
+            "top_k": None,
+            "stop_sequences": None,
+            "response_format": None,
+            "tools": None,
+            "tool_choice": None,
+            "enable_thinking": None,
+            "extra_body": None,
+            "base_url": "http://127.0.0.1:8080/v1",
+            "api_key": "not-needed",
+            "timeout": 120.0,
+            "max_retries": 2,
+        }
+        monkeypatch.setattr(chat_module, "AnsibleModule", lambda **kwargs: fake_module)
+        monkeypatch.setattr(chat_module, "get_client", lambda module: None)
+
+        chat_module.main()
+
+        fake_module.exit_json.assert_not_called()
+        fake_module.fail_json.assert_not_called()
+        mock_openai.OpenAI.return_value.chat.completions.create.assert_not_called()
+
+
 class TestMainRequestConstruction:
     def _run_main(self, mock_openai, monkeypatch, params_overrides):
         from ansible_collections.aknochow.llama.plugins.modules import chat as chat_module

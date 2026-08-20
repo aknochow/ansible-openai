@@ -36,7 +36,10 @@ def get_client(module: AnsibleModule):
     base_url = module.params["base_url"]
     scheme = urlparse(base_url).scheme
     if scheme not in ("http", "https"):
-        module.fail_json(msg=f"base_url must use http or https, got: {base_url!r}")
+        # Echo only the scheme, not the full base_url -- it may carry
+        # embedded credentials (e.g. https://user:pass@host/) that
+        # shouldn't land in Ansible task output/logs.
+        module.fail_json(msg=f"base_url must use http or https, got scheme: {scheme!r}")
         return
 
     timeout = module.params.get("timeout") or 120.0

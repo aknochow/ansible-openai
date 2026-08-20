@@ -316,6 +316,13 @@ def main():
     )
 
     client = get_client(module)
+    if client is None:
+        # Unreachable in real Ansible execution -- get_client() only
+        # returns None after calling fail_json(), which calls sys.exit().
+        # Guarded anyway since it costs nothing and keeps this function
+        # correct even outside that real-execution guarantee (e.g. a
+        # test harness with a mocked, non-exiting fail_json).
+        return
     # Imported here, not at module top-level, deliberately -- get_client()
     # already fail_json()'d (which exits) if the openai SDK isn't
     # installed, so this is the earliest point the import is guaranteed
