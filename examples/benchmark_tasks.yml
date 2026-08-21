@@ -1,0 +1,128 @@
+---
+# Sample benchmark: a few small, deterministic tasks (math/sentiment/
+# extraction) run entirely via aknochow.llama.chat, each scored against a
+# known-correct expected value using response_format-enforced JSON.
+#
+# This is the interchangeability acceptance test: `benchmark_tasks` below
+# is IDENTICAL to aknochow.claude's examples/cost_effectiveness_comparison.yml
+# (same 3 tasks, prompts, schemas, expected values) so it can be reused
+# verbatim in a future 3-way Claude/Gemini/Qwen comparison playbook rather
+# than rewritten. Swapping this playbook to a different provider only
+# requires changing the single task below: the module FQCN
+# (aknochow.llama.chat -> aknochow.claude.message / aknochow.gemini.generate),
+# its connection params (llama needs none by default; Claude/Gemini need
+# provider/auth), and the structured-output param's name/shape
+# (response_format/json_schema here vs. Claude's output_config/format or
+# Gemini's response_schema/response_mime_type) -- benchmark_tasks, the
+# scoring logic, and the summary reporting are all provider-agnostic as-is.
+#
+# Cost is always $0.00 here -- llama-server is self-hosted, there's no
+# per-token billing. tokens/sec is the more meaningful "cost" axis for a
+# local/free model, so it's surfaced instead (see
+# choose-serving-setup-and-model-artifact for measured throughput numbers).
+#
+# Prerequisites: llama-server running locally first --
+#   llama-server -m <path-to-gguf> -c 4096 --port 8080 --host 127.0.0.1 -ngl 99
+# (see choose-serving-setup-and-model-artifact for the full recommended
+# invocation and why enable_thinking must stay false for reliable
+# response_format results).
+#
+# Usage:
+#   ansible-playbook examples/benchmark_tasks.yml
+
+- name: Benchmark aknochow.llama.chat on simple structured tasks
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    model: qwen3-8b
+    base_url: "{{ lookup('env', 'ANSIBLE_LLAMA_BASE_URL') | default('http://127.0.0.1:8080/v1', true) }}"
+
+    benchmark_tasks:
+      - name: math
+        prompt: "What is 17 * 6?"
+        schema:
+          type: object
+          properties:
+            answer: { type: integer }
+          required: [answer]
+          additionalProperties: false
+        expected: { answer: 102 }
+
+      - name: sentiment
+        prompt: "Classify the sentiment: 'This collection saved me hours of work!'"
+        schema:
+          type: object
+          properties:
+            sentiment: { type: string, enum: [positive, neutral, negative] }
+          required: [sentiment]
+          additionalProperties: false
+        expected: { sentiment: positive }
+
+      - name: extraction
+        prompt: "Extract name and age from: John is 42 years old."
+        schema:
+          type: object
+          properties:
+            name: { type: string }
+            age: { type: integer }
+          required: [name, age]
+          additionalProperties: false
+        expected: { name: John, age: 42 }
+
+  tasks:
+    - name: Run each task via aknochow.llama.chat
+      aknochow.llama.chat:
+        base_url: "{{ base_url }}"
+        model: "{{ model }}"
+        max_tokens: 256
+        enable_thinking: false
+        messages:
+          - role: user
+            content: "{{ item.prompt }}"
+        response_format:
+          type: json_schema
+          json_schema:
+            name: "{{ item.name }}_result"
+            strict: true
+            schema: "{{ item.schema }}"
+      loop: "{{ benchmark_tasks }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: results
+
+    - name: Score correctness, tokens, and throughput per task
+      ansible.builtin.set_fact:
+        summary: "{{ summary | default([]) + [entry] }}"
+      loop: "{{ results.results }}"
+      loop_control:
+        label: "{{ benchmark_tasks[idx].name }}"
+        index_var: idx
+      vars:
+        entry:
+          task: "{{ benchmark_tasks[idx].name }}"
+          correct: "{{ item.structured == benchmark_tasks[idx].expected }}"
+          input_tokens: "{{ item.usage.prompt_tokens }}"
+          output_tokens: "{{ item.usage.completion_tokens }}"
+          tokens_per_second: "{{ item.response.timings.predicted_per_second | default('n/a') }}"
+          cost_usd: 0.0
+
+    - name: Show per-task results
+      ansible.builtin.debug:
+        msg: >-
+          {{ item.task }}: correct={{ item.correct }}
+          tokens={{ item.input_tokens }}in/{{ item.output_tokens }}out
+          ({{ item.tokens_per_second | round(1) if item.tokens_per_second != 'n/a' else 'n/a' }} tok/s)
+          cost=$0.00 (self-hosted)
+      loop: "{{ summary }}"
+      loop_control:
+        label: "{{ item.task }}"
+
+    - name: Show aggregate summary
+      ansible.builtin.debug:
+        msg:
+          - "=== aknochow.llama.chat ({{ benchmark_tasks | length }} tasks, model={{ model }}) ==="
+          - "{{ summary | selectattr('correct') | list | length }}/{{ benchmark_tasks | length }} correct"
+          - "Total tokens: {{ summary | map(attribute='input_tokens') | map('int') | sum }} input / {{ summary | map(attribute='output_tokens') | map('int') | sum }} output"
+          - "Total cost: $0.00 (self-hosted -- the real cost is your own compute time; see per-task tokens/sec above)"
