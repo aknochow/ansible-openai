@@ -5,26 +5,18 @@ from __future__ import annotations
 import atexit
 import shutil
 
-# Deliberately bare, not `from tests.unit.conftest import ...` -- verified
-# empirically that the qualified form actually BREAKS when pytest is
-# invoked from within tests/unit itself (ModuleNotFoundError: No module
-# named 'tests'), which is exactly the invocation pattern a qualified
-# import would supposedly protect against. The bare form works correctly
-# under both `pytest tests/unit/` from the repo root and `pytest
-# test_conftest_namespace_shim.py` from within tests/unit -- pytest
-# inserts each test file's own directory into sys.path during collection,
-# independent of the invocation cwd. Matches both sibling collections'
-# identical, working pattern.
-from conftest import _create_namespace_shim
 
-
-def test_namespace_shim_registers_working_cleanup(monkeypatch, tmp_path):
+def test_namespace_shim_registers_working_cleanup(namespace_shim_factory, monkeypatch, tmp_path):
+    # No import of conftest at all, bare or qualified -- pytest injects
+    # _create_namespace_shim via the namespace_shim_factory fixture
+    # (defined in conftest.py itself), sidestepping the sys.path/package-
+    # resolution question entirely rather than picking a side of it.
     registered = []
     monkeypatch.setattr(
         atexit, "register", lambda fn, *args, **kwargs: registered.append((fn, args, kwargs))
     )
 
-    result = _create_namespace_shim("test_shim_", "llama", tmp_path)
+    result = namespace_shim_factory("test_shim_", "llama", tmp_path)
     try:
         assert result.exists()
         assert len(registered) == 1

@@ -8,6 +8,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
+
 _project_root = Path(__file__).resolve().parents[2]  # ansible-llama/
 
 
@@ -32,3 +34,12 @@ def _create_namespace_shim(prefix: str, collection_name: str, project_root: Path
 _namespace_root = _create_namespace_shim("ansible_llama_test_", "llama", _project_root)
 
 sys.path.insert(0, str(_namespace_root))
+
+
+@pytest.fixture
+def namespace_shim_factory():
+    """Exposes _create_namespace_shim to test files via pytest's fixture
+    injection, sidestepping the sys.path/package-resolution question
+    entirely -- no import of this module needed at all, bare or
+    qualified, since pytest wires fixtures in automatically."""
+    return _create_namespace_shim

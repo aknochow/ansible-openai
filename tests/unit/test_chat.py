@@ -223,6 +223,23 @@ class TestFlattenResponse:
         with pytest.raises(ValueError):
             flatten_response(response)
 
+    def test_none_message_raises_value_error(self, mock_openai):
+        # Regression check for a real review finding: choice.message.content
+        # was accessed without checking whether message itself is None,
+        # which some OpenAI-compatible servers could theoretically return.
+        # Same treatment as the empty-choices guard -- a clean, catchable
+        # ValueError instead of an unhandled AttributeError.
+        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+            flatten_response,
+        )
+
+        choice = MagicMock()
+        choice.message = None
+        response = make_response([choice])
+
+        with pytest.raises(ValueError):
+            flatten_response(response)
+
     def test_malformed_arguments_falls_back_to_raw_string(self, mock_openai):
         # Defensive fallback -- should not happen under grammar-constrained
         # tool-call decoding, but must not crash the whole call if it did.

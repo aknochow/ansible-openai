@@ -247,6 +247,8 @@ def flatten_response(response, parse_structured=False):
     if not response.choices:
         raise ValueError("llama-server returned an empty choices list")
     choice = response.choices[0]
+    if choice.message is None:
+        raise ValueError("llama-server returned a choice with no message")
     text = choice.message.content or ""
     reasoning = getattr(choice.message, "reasoning_content", None)
     tool_calls = flatten_tool_calls(choice.message)
