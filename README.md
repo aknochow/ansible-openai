@@ -197,6 +197,72 @@ reasoning on with a modest `max_tokens` reliably produces this failure;
 `enable_thinking: false` reliably avoids it (a full 5-call sweep against
 Qwen3.8-27B went from 0/5 to 5/5 successful once disabled).
 
+A large `max_tokens` + `enable_thinking: true` call can also run well past
+the default 120-second `timeout` (Qwen3.8-27B generates at ~10 tok/s, so a
+2048-token reasoning-heavy call can take several minutes) — raise `timeout`
+too (e.g. `400`) or you'll get a clean but unhelpful `Request timed out.`
+failure after the SDK's own retries.
+
+## Ad-hoc usage (no playbook needed)
+
+For quick prompt testing without writing a playbook, install the collection
+locally once:
+
+```bash
+ansible-galaxy collection install . --force
+```
+
+This copies the collection into `~/.ansible/collections/` — it's a
+snapshot, not a symlink, so re-run this after editing the source before
+your next ad-hoc call picks up the change.
+
+Then run any prompt directly from the command line:
+
+```bash
+ansible localhost -m aknochow.llama.chat -a '{
+  "model": "qwen3-8b",
+  "max_tokens": 400,
+  "messages": [{"role": "user", "content": "your prompt here"}]
+}'
+```
+
+`-a` takes a JSON object here, not flat `key=value` args, since `messages`
+is a list of dicts. Add `response_format`, `tools`/`tool_choice`, or
+`enable_thinking` to the same JSON blob exactly as in the playbook examples
+above — e.g. for structured output:
+
+```bash
+ansible localhost -m aknochow.llama.chat -a '{
+  "model": "qwen3-8b",
+  "max_tokens": 512,
+  "messages": [{"role": "user", "content": "Write a Python function that checks if a string is a palindrome."}],
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "code_gen",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "language": {"type": "string"},
+          "code": {"type": "string"},
+          "explanation": {"type": "string"}
+        },
+        "required": ["language", "code", "explanation"],
+        "additionalProperties": false
+      }
+    }
+  }
+}'
+```
+
+If port 8080 is already in use by something else on your machine (a real
+example hit during development: a local `jira_emulator` service squatting
+on it, producing a confusing `Error code: 404` rather than a connection
+error), either start `llama-server` on a different port and pass
+`base_url` explicitly, or set `ANSIBLE_LLAMA_BASE_URL` once instead of
+repeating it on every call.
+
 ## Examples
 
 See `examples/benchmark_tasks.yml` — a small math/sentiment/extraction
