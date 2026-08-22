@@ -48,7 +48,12 @@ def make_message(content="", reasoning_content=None, tool_calls=None, reasoning=
 
 def make_choice(content="", reasoning_content=None, finish_reason="stop", tool_calls=None, reasoning=None):
     choice = MagicMock()
-    choice.message = make_message(content, reasoning_content, tool_calls, reasoning)
+    choice.message = make_message(
+        content=content,
+        reasoning_content=reasoning_content,
+        tool_calls=tool_calls,
+        reasoning=reasoning,
+    )
     choice.finish_reason = finish_reason
     return choice
 

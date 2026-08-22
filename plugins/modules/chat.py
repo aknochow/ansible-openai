@@ -254,9 +254,12 @@ def flatten_response(response, parse_structured=False):
     # uses reasoning for the same concept (confirmed live -- Ollama silently
     # drops the trace under the other name, this module must check both or
     # lose it with no error, same as the field it's actually keyed by).
-    reasoning = getattr(choice.message, "reasoning_content", None) or getattr(
-        choice.message, "reasoning", None
-    )
+    # `is not None`, not `or` -- an `or` chain would treat an empty-string
+    # reasoning_content as absent and fall through to Ollama's field,
+    # violating the intended reasoning_content-wins precedence.
+    reasoning = getattr(choice.message, "reasoning_content", None)
+    if reasoning is None:
+        reasoning = getattr(choice.message, "reasoning", None)
     tool_calls = flatten_tool_calls(choice.message)
 
     structured = None
