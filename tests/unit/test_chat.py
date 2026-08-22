@@ -28,22 +28,27 @@ def make_tool_call(call_id="call_1", name="get_weather", arguments='{"city": "Bo
     return tool_call
 
 
-def make_message(content="", reasoning_content=None, tool_calls=None):
+def make_message(content="", reasoning_content=None, tool_calls=None, reasoning=None):
     message = MagicMock()
     message.content = content
-    # MagicMock auto-vivifies attributes as truthy MagicMocks, so both of
-    # these must be set explicitly -- otherwise every response would look
-    # like it produced a reasoning trace and/or a non-iterable tool_calls
-    # blob (same hazard aknochow.gemini's test suite already flags for its
-    # own function_call attribute).
+    # MagicMock auto-vivifies attributes as truthy MagicMocks, so these must
+    # all be set explicitly -- otherwise every response would look like it
+    # produced a reasoning trace under BOTH possible field names and/or a
+    # non-iterable tool_calls blob (same hazard aknochow.gemini's test suite
+    # already flags for its own function_call attribute).
     message.reasoning_content = reasoning_content
+    # reasoning is Ollama's OpenAI-compat field name for the same concept
+    # llama-server calls reasoning_content -- confirmed live against a real
+    # Ollama instance (see design-module-interface-mirroring-siblings /
+    # the Ollama-compatibility handoff).
+    message.reasoning = reasoning
     message.tool_calls = tool_calls
     return message
 
 
-def make_choice(content="", reasoning_content=None, finish_reason="stop", tool_calls=None):
+def make_choice(content="", reasoning_content=None, finish_reason="stop", tool_calls=None, reasoning=None):
     choice = MagicMock()
-    choice.message = make_message(content, reasoning_content, tool_calls)
+    choice.message = make_message(content, reasoning_content, tool_calls, reasoning)
     choice.finish_reason = finish_reason
     return choice
 
@@ -103,6 +108,39 @@ class TestFlattenResponse:
         result = flatten_response(response)
 
         assert "reasoning" not in result
+
+    def test_reasoning_present_via_ollama_field_name(self, mock_openai):
+        # Regression check for a real finding from live Ollama testing:
+        # Ollama's OpenAI-compat endpoint puts the reasoning trace under
+        # message.reasoning, not message.reasoning_content like
+        # llama-server. Without checking both names, this was silently
+        # dropped -- no error, just missing data.
+        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+            flatten_response,
+        )
+
+        response = make_response(
+            [make_choice(content="4", reasoning="Let me think... 2+2=4")]
+        )
+        result = flatten_response(response)
+
+        assert result["reasoning"] == "Let me think... 2+2=4"
+        assert result["text"] == "4"
+
+    def test_reasoning_content_takes_precedence_over_reasoning(self, mock_openai):
+        # If a server ever sent both (shouldn't happen in practice), the
+        # llama-server-native field name wins -- documents the precedence
+        # rather than leaving it as an accident of dict/getattr ordering.
+        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+            flatten_response,
+        )
+
+        response = make_response(
+            [make_choice(content="4", reasoning_content="from reasoning_content", reasoning="from reasoning")]
+        )
+        result = flatten_response(response)
+
+        assert result["reasoning"] == "from reasoning_content"
 
     def test_structured_output_parsed_when_requested(self, mock_openai):
         from ansible_collections.aknochow.llama.plugins.modules.chat import (
