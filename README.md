@@ -11,6 +11,12 @@ endpoint. Built for deterministic, structured invocation from Ansible tasks
 collections [`aknochow.claude`](https://github.com/aknochow/ansible-claude)
 and [`aknochow.gemini`](https://github.com/aknochow/ansible-gemini).
 
+`base_url` targets any OpenAI-compatible endpoint, not only llama-server —
+this collection also works against
+[Ollama](https://github.com/ollama/ollama)'s OpenAI-compat endpoint with zero
+code changes, with one documented limitation. See
+[Ollama compatibility](#ollama-compatibility) below.
+
 ## Why this exists
 
 Qwen3-class local models are plausibly the first local/free models capable
@@ -78,6 +84,27 @@ Confirm Metal is genuinely active — don't assume it from throughput alone:
 llama-server --list-devices                 # confirms a Metal device exists
 llama-server -m <path> -v ...                # -v prints "assigned to device MTL0" per layer on load
 ```
+
+## Ollama compatibility
+
+`chat`'s `base_url` targets any OpenAI-compatible endpoint, not only
+llama-server. Confirmed live against a real [Ollama](https://github.com/ollama/ollama)
+instance (`base_url: http://127.0.0.1:11434/v1`, no code changes required):
+basic calls, `response_format` (structured output), and `tools`/`tool_choice`
+(function calling) all work correctly. Ollama also names its reasoning-trace
+field differently from llama-server (`reasoning` vs. `reasoning_content`) --
+this module checks both, so `result.reasoning` is populated correctly
+regardless of which backend served the request.
+
+One documented limitation: **`enable_thinking` has no effect via Ollama's
+OpenAI-compat endpoint.** Ollama's `/v1/chat/completions` shim does not
+expose any thinking-control parameter, so this module's `enable_thinking`
+(and the `chat_template_kwargs.enable_thinking` extra-body field it sets)
+is silently ignored there -- Qwen3's thinking trace runs at whatever the
+loaded model's template default is, regardless of what this module sends.
+If you need thinking-trace control against Ollama, use Ollama's native
+`/api/chat` endpoint directly (its own `think: false` parameter, confirmed
+working) rather than this module.
 
 ## Auth
 
