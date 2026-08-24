@@ -19,14 +19,14 @@ def mock_openai():
 
 class TestProviderArgspec:
     def test_base_url_default(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+        from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
             PROVIDER_ARGSPEC,
         )
 
         assert PROVIDER_ARGSPEC["base_url"]["default"] == "http://127.0.0.1:8080/v1"
 
     def test_api_key_default_and_no_log(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+        from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
             PROVIDER_ARGSPEC,
         )
 
@@ -34,7 +34,7 @@ class TestProviderArgspec:
         assert PROVIDER_ARGSPEC["api_key"]["default"] == "not-needed"
 
     def test_timeout_and_max_retries_defaults(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+        from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
             PROVIDER_ARGSPEC,
         )
 
@@ -44,7 +44,7 @@ class TestProviderArgspec:
 
 class TestGetClient:
     def test_builds_client_with_defaults(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+        from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
             get_client,
         )
 
@@ -65,7 +65,7 @@ class TestGetClient:
         assert call_kwargs["max_retries"] == 2
 
     def test_custom_base_url_and_api_key(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+        from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
             get_client,
         )
 
@@ -86,7 +86,7 @@ class TestGetClient:
         # Regression coverage: get_client() itself must not blow up if
         # module.params ever lacks these keys (e.g. a caller that built
         # its own params dict without the full PROVIDER_ARGSPEC merge).
-        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+        from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
             get_client,
         )
 
@@ -104,7 +104,7 @@ class TestGetClient:
         assert call_kwargs["max_retries"] == 2
 
     def test_https_base_url_is_accepted(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+        from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
             get_client,
         )
 
@@ -121,7 +121,7 @@ class TestGetClient:
         module.fail_json.assert_not_called()
 
     def test_plain_http_to_loopback_does_not_warn(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+        from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
             get_client,
         )
 
@@ -140,7 +140,7 @@ class TestGetClient:
         # Regression check for a real review finding: no warning existed
         # for plain http to a non-loopback host, which sends api_key and
         # message content in cleartext over the network.
-        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+        from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
             get_client,
         )
 
@@ -161,7 +161,7 @@ class TestGetClient:
         module.fail_json.assert_not_called()
 
     def test_https_to_remote_host_does_not_warn(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+        from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
             get_client,
         )
 
@@ -179,7 +179,7 @@ class TestGetClient:
     def test_invalid_base_url_scheme_fails_cleanly(self, mock_openai):
         # Regression check for a real review finding: base_url was passed
         # straight to the SDK with no scheme validation at all.
-        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+        from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
             get_client,
         )
 
@@ -201,7 +201,7 @@ class TestGetClient:
         # Regression check for a real review finding: the error message
         # must not echo the raw base_url back, since it could carry
         # embedded credentials (e.g. https://user:pass@host/).
-        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+        from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
             get_client,
         )
 
@@ -232,7 +232,7 @@ class TestGetClient:
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
 
-        from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+        from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
             get_client,
         )
 

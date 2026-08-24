@@ -1,14 +1,15 @@
 namespace: aknochow
-name: llama
+name: openai
 version: 0.1.0
 readme: README.md
 authors:
   - Adam Knochowski <aknochow@redhat.com>
-description: Ansible modules for calling a self-hosted llama.cpp server directly via the official openai Python SDK.
+description: Ansible modules for calling any OpenAI-compatible chat completions endpoint (self-hosted llama.cpp, Ollama, vLLM, etc.) directly via the official openai Python SDK.
 license:
   - Apache-2.0
-repository: https://github.com/aknochow/ansible-llama
+repository: https://github.com/aknochow/ansible-openai
 tags:
+  - openai
   - llama
   - llamacpp
   - qwen

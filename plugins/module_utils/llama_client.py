@@ -10,13 +10,13 @@ PROVIDER_ARGSPEC = dict(
     base_url=dict(
         type="str",
         default="http://127.0.0.1:8080/v1",
-        fallback=(env_fallback, ["ANSIBLE_LLAMA_BASE_URL"]),
+        fallback=(env_fallback, ["ANSIBLE_OPENAI_BASE_URL"]),
     ),
     api_key=dict(
         type="str",
         no_log=True,
         default="not-needed",
-        fallback=(env_fallback, ["ANSIBLE_LLAMA_API_KEY"]),
+        fallback=(env_fallback, ["ANSIBLE_OPENAI_API_KEY"]),
     ),
     timeout=dict(type="float", default=120.0),
     max_retries=dict(type="int", default=2),

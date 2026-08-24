@@ -1,4 +1,4 @@
-# aknochow.llama
+# aknochow.openai
 
 Ansible collection for calling a self-hosted [llama.cpp](https://github.com/ggml-org/llama.cpp)
 `llama-server` instance directly via the official
@@ -109,8 +109,8 @@ working) rather than this module.
 ## Auth
 
 ```bash
-export ANSIBLE_LLAMA_BASE_URL=http://127.0.0.1:8080/v1   # this is already the default
-export ANSIBLE_LLAMA_API_KEY=whatever                     # optional; llama-server doesn't validate it
+export ANSIBLE_OPENAI_BASE_URL=http://127.0.0.1:8080/v1   # this is already the default
+export ANSIBLE_OPENAI_API_KEY=whatever                     # optional; llama-server doesn't validate it
 ```
 
 Deliberately collection-specific env var names, not the openai SDK's own
@@ -123,7 +123,7 @@ collection.
 
 ```yaml
 - name: Basic chat completion
-  aknochow.llama.chat:
+  aknochow.openai.chat:
     model: qwen3-8b
     max_tokens: 512
     messages:
@@ -142,7 +142,7 @@ with no wire-accuracy benefit.
 ### Structured output
 
 ```yaml
-- aknochow.llama.chat:
+- aknochow.openai.chat:
     model: qwen3-8b
     max_tokens: 1024
     messages:
@@ -174,7 +174,7 @@ why that matters.
 ### Tool calling
 
 ```yaml
-- aknochow.llama.chat:
+- aknochow.openai.chat:
     model: qwen3-8b
     max_tokens: 256
     messages:
@@ -204,7 +204,7 @@ for you so it converges in *type*, not just field name, with
 ### Reasoning / thinking control
 
 ```yaml
-- aknochow.llama.chat:
+- aknochow.openai.chat:
     model: qwen3-8b
     max_tokens: 4096          # needs real headroom when thinking is on
     enable_thinking: true
@@ -246,7 +246,7 @@ your next ad-hoc call picks up the change.
 Then run any prompt directly from the command line:
 
 ```bash
-ansible localhost -m aknochow.llama.chat -a '{
+ansible localhost -m aknochow.openai.chat -a '{
   "model": "qwen3-8b",
   "max_tokens": 400,
   "messages": [{"role": "user", "content": "your prompt here"}]
@@ -259,7 +259,7 @@ is a list of dicts. Add `response_format`, `tools`/`tool_choice`, or
 above — e.g. for structured output:
 
 ```bash
-ansible localhost -m aknochow.llama.chat -a '{
+ansible localhost -m aknochow.openai.chat -a '{
   "model": "qwen3-8b",
   "max_tokens": 512,
   "messages": [{"role": "user", "content": "Write a Python function that checks if a string is a palindrome."}],
@@ -287,7 +287,7 @@ If port 8080 is already in use by something else on your machine (a real
 example hit during development: a local `jira_emulator` service squatting
 on it, producing a confusing `Error code: 404` rather than a connection
 error), either start `llama-server` on a different port and pass
-`base_url` explicitly, or set `ANSIBLE_LLAMA_BASE_URL` once instead of
+`base_url` explicitly, or set `ANSIBLE_OPENAI_BASE_URL` once instead of
 repeating it on every call.
 
 ## Examples
