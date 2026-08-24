@@ -119,6 +119,13 @@ set for unrelated real OpenAI usage, and silently inheriting them here
 would be a confusing cross-tool collision for a self-hosted-only
 collection.
 
+**Migration note (collection renamed `aknochow.llama` → `aknochow.openai`):**
+`ANSIBLE_LLAMA_BASE_URL`/`ANSIBLE_LLAMA_API_KEY` are no longer read. If
+you have either set from before this rename, the module will silently
+fall back to its hardcoded default (`http://127.0.0.1:8080/v1`) instead
+of your configured value, with no warning — update your shell exports
+(or CI config) to `ANSIBLE_OPENAI_BASE_URL`/`ANSIBLE_OPENAI_API_KEY`.
+
 ### `chat` — basic call
 
 ```yaml
