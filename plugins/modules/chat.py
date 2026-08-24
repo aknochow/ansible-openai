@@ -96,14 +96,14 @@ options:
         as dedicated parameters above.
     type: dict
 extends_documentation_fragment:
-  - aknochow.llama.auth
+  - aknochow.openai.auth
 requirements:
   - "openai"
 """
 
 EXAMPLES = r"""
 - name: Basic chat completion
-  aknochow.llama.chat:
+  aknochow.openai.chat:
     model: qwen3-8b
     max_tokens: 512
     messages:
@@ -112,7 +112,7 @@ EXAMPLES = r"""
   register: result
 
 - name: Structured extraction with response_format
-  aknochow.llama.chat:
+  aknochow.openai.chat:
     model: qwen3-8b
     max_tokens: 1024
     messages:
@@ -137,7 +137,7 @@ EXAMPLES = r"""
     msg: "{{ result.structured.name }} is {{ result.structured.severity }}"
 
 - name: Allow the model to think before answering (needs a much larger max_tokens)
-  aknochow.llama.chat:
+  aknochow.openai.chat:
     model: qwen3-8b
     max_tokens: 4096
     enable_thinking: true
@@ -147,7 +147,7 @@ EXAMPLES = r"""
   register: result
 
 - name: Force a tool call
-  aknochow.llama.chat:
+  aknochow.openai.chat:
     model: qwen3-8b
     max_tokens: 256
     messages:
@@ -217,7 +217,7 @@ import json
 
 from ansible.module_utils.basic import AnsibleModule
 
-from ansible_collections.aknochow.llama.plugins.module_utils.llama_client import (
+from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
     PROVIDER_ARGSPEC,
     get_client,
 )

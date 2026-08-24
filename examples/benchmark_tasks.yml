@@ -1,6 +1,6 @@
 ---
 # Sample benchmark: a few small, deterministic tasks (math/sentiment/
-# extraction) run entirely via aknochow.llama.chat, each scored against a
+# extraction) run entirely via aknochow.openai.chat, each scored against a
 # known-correct expected value using response_format-enforced JSON.
 #
 # This is the interchangeability acceptance test: `benchmark_tasks` below
@@ -9,7 +9,7 @@
 # verbatim in a future 3-way Claude/Gemini/Qwen comparison playbook rather
 # than rewritten. Swapping this playbook to a different provider only
 # requires changing the single task below: the module FQCN
-# (aknochow.llama.chat -> aknochow.claude.message / aknochow.gemini.generate),
+# (aknochow.openai.chat -> aknochow.claude.message / aknochow.gemini.generate),
 # its connection params (llama needs none by default; Claude/Gemini need
 # provider/auth), and the structured-output param's name/shape
 # (response_format/json_schema here vs. Claude's output_config/format or
@@ -30,14 +30,14 @@
 # Usage:
 #   ansible-playbook examples/benchmark_tasks.yml
 
-- name: Benchmark aknochow.llama.chat on simple structured tasks
+- name: Benchmark aknochow.openai.chat on simple structured tasks
   hosts: localhost
   connection: local
   gather_facts: false
 
   vars:
     model: qwen3-8b
-    base_url: "{{ lookup('env', 'ANSIBLE_LLAMA_BASE_URL') | default('http://127.0.0.1:8080/v1', true) }}"
+    base_url: "{{ lookup('env', 'ANSIBLE_OPENAI_BASE_URL') | default('http://127.0.0.1:8080/v1', true) }}"
 
     benchmark_tasks:
       - name: math
@@ -72,8 +72,8 @@
         expected: { name: John, age: 42 }
 
   tasks:
-    - name: Run each task via aknochow.llama.chat
-      aknochow.llama.chat:
+    - name: Run each task via aknochow.openai.chat
+      aknochow.openai.chat:
         base_url: "{{ base_url }}"
         model: "{{ model }}"
         max_tokens: 256
@@ -122,7 +122,7 @@
     - name: Show aggregate summary
       ansible.builtin.debug:
         msg:
-          - "=== aknochow.llama.chat ({{ benchmark_tasks | length }} tasks, model={{ model }}) ==="
+          - "=== aknochow.openai.chat ({{ benchmark_tasks | length }} tasks, model={{ model }}) ==="
           - "{{ summary | selectattr('correct') | list | length }}/{{ benchmark_tasks | length }} correct"
           - "Total tokens: {{ summary | map(attribute='input_tokens') | map('int') | sum }} input / {{ summary | map(attribute='output_tokens') | map('int') | sum }} output"
           - "Total cost: $0.00 (self-hosted -- the real cost is your own compute time; see per-task tokens/sec above)"

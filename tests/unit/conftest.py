@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-_project_root = Path(__file__).resolve().parents[2]  # ansible-llama/
+_project_root = Path(__file__).resolve().parents[2]  # collection root
 
 
 def _create_namespace_shim(prefix: str, collection_name: str, project_root: Path) -> Path:
@@ -31,7 +31,7 @@ def _create_namespace_shim(prefix: str, collection_name: str, project_root: Path
     return namespace_root
 
 
-_namespace_root = _create_namespace_shim("ansible_llama_test_", "llama", _project_root)
+_namespace_root = _create_namespace_shim("ansible_openai_test_", "openai", _project_root)
 
 sys.path.insert(0, str(_namespace_root))
 

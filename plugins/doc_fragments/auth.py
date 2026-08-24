@@ -10,7 +10,7 @@ options:
   base_url:
     description:
       - Base URL of the self-hosted llama-server instance (its OpenAI-compatible endpoint).
-      - If the value is not specified, the value of the E(ANSIBLE_LLAMA_BASE_URL) environment variable will be used.
+      - If the value is not specified, the value of the E(ANSIBLE_OPENAI_BASE_URL) environment variable will be used.
     type: str
     default: http://127.0.0.1:8080/v1
   api_key:
@@ -18,7 +18,7 @@ options:
       - API key sent to the server. llama-server does not validate this by default -- the
         openai SDK requires a non-empty string regardless, so a dummy placeholder is used
         unless overridden.
-      - If the value is not specified, the value of the E(ANSIBLE_LLAMA_API_KEY) environment variable will be used.
+      - If the value is not specified, the value of the E(ANSIBLE_OPENAI_API_KEY) environment variable will be used.
     type: str
   timeout:
     description:

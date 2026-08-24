@@ -76,7 +76,7 @@ def make_response(choices, usage_kwargs=None, usage_is_none=False):
 
 class TestFlattenResponse:
     def test_text_only_response(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -92,7 +92,7 @@ class TestFlattenResponse:
         assert "structured" not in result
 
     def test_reasoning_present_when_returned(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -105,7 +105,7 @@ class TestFlattenResponse:
         assert result["text"] == "4"
 
     def test_reasoning_absent_by_default(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -120,7 +120,7 @@ class TestFlattenResponse:
         # message.reasoning, not message.reasoning_content like
         # llama-server. Without checking both names, this was silently
         # dropped -- no error, just missing data.
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -136,7 +136,7 @@ class TestFlattenResponse:
         # If a server ever sent both (shouldn't happen in practice), the
         # llama-server-native field name wins -- documents the precedence
         # rather than leaving it as an accident of dict/getattr ordering.
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -148,7 +148,7 @@ class TestFlattenResponse:
         assert result["reasoning"] == "from reasoning_content"
 
     def test_structured_output_parsed_when_requested(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -163,7 +163,7 @@ class TestFlattenResponse:
         # Regression check, mirrors aknochow.claude's identical fix: text
         # that HAPPENS to parse as JSON must not silently gain a
         # `structured` key when response_format wasn't set.
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -178,7 +178,7 @@ class TestFlattenResponse:
         # The thinking-budget-exhaustion failure mode confirmed live this
         # session: finish_reason=length with empty text when reasoning
         # burns the whole max_tokens budget.
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -193,7 +193,7 @@ class TestFlattenResponse:
         assert result["reasoning"] == "still thinking..."
 
     def test_tool_calls_empty_when_none(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -208,7 +208,7 @@ class TestFlattenResponse:
         # in design-module-interface-mirroring-siblings) and must be
         # parsed to a dict here, matching Claude's `input` and Gemini's
         # `args` in *type*, not just field name.
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -221,7 +221,7 @@ class TestFlattenResponse:
         assert result["finish_reason"] == "tool_calls"
 
     def test_multiple_tool_calls(self, mock_openai):
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -242,7 +242,7 @@ class TestFlattenResponse:
         # entirely. usage itself must stay a dict (matches the RETURN
         # doc's "returned: always"), with 0 sub-fields (matching the
         # declared type: int) instead of crashing or going null.
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -257,7 +257,7 @@ class TestFlattenResponse:
         # IndexError (escaping main()'s OpenAIError-only except clause) on
         # an empty choices list. Must raise a clean, catchable ValueError
         # instead.
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -272,7 +272,7 @@ class TestFlattenResponse:
         # which some OpenAI-compatible servers could theoretically return.
         # Same treatment as the empty-choices guard -- a clean, catchable
         # ValueError instead of an unhandled AttributeError.
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -286,7 +286,7 @@ class TestFlattenResponse:
     def test_malformed_arguments_falls_back_to_raw_string(self, mock_openai):
         # Defensive fallback -- should not happen under grammar-constrained
         # tool-call decoding, but must not crash the whole call if it did.
-        from ansible_collections.aknochow.llama.plugins.modules.chat import (
+        from ansible_collections.aknochow.openai.plugins.modules.chat import (
             flatten_response,
         )
 
@@ -299,7 +299,7 @@ class TestFlattenResponse:
 
 class TestMainReportsChanged:
     def test_main_reports_changed_false(self, mock_openai, monkeypatch):
-        from ansible_collections.aknochow.llama.plugins.modules import chat as chat_module
+        from ansible_collections.aknochow.openai.plugins.modules import chat as chat_module
 
         fake_module = MagicMock()
         fake_module.params = {
@@ -333,7 +333,7 @@ class TestMainReportsChanged:
 
 class TestMainHandlesEmptyChoicesCleanly:
     def test_empty_choices_fails_cleanly_not_a_crash(self, mock_openai, monkeypatch):
-        from ansible_collections.aknochow.llama.plugins.modules import chat as chat_module
+        from ansible_collections.aknochow.openai.plugins.modules import chat as chat_module
 
         fake_module = MagicMock()
         fake_module.params = {
@@ -370,7 +370,7 @@ class TestMainHandlesNoneClientCleanly:
         # has already called sys.exit() -- unreachable there -- but must
         # not blow up with an AttributeError on client.chat... if it ever
         # did return None (e.g. a mocked, non-exiting fail_json).
-        from ansible_collections.aknochow.llama.plugins.modules import chat as chat_module
+        from ansible_collections.aknochow.openai.plugins.modules import chat as chat_module
 
         fake_module = MagicMock()
         fake_module.params = {
@@ -403,7 +403,7 @@ class TestMainHandlesNoneClientCleanly:
 
 class TestMainRedactsSensitiveValuesFromExceptionMessages:
     def _run_main_with_exception(self, mock_openai, monkeypatch, exception_message):
-        from ansible_collections.aknochow.llama.plugins.modules import chat as chat_module
+        from ansible_collections.aknochow.openai.plugins.modules import chat as chat_module
 
         fake_module = MagicMock()
         fake_module.params = {
@@ -466,7 +466,7 @@ class TestMainRedactsSensitiveValuesFromExceptionMessages:
 
 class TestMainRequestConstruction:
     def _run_main(self, mock_openai, monkeypatch, params_overrides):
-        from ansible_collections.aknochow.llama.plugins.modules import chat as chat_module
+        from ansible_collections.aknochow.openai.plugins.modules import chat as chat_module
 
         fake_module = MagicMock()
         fake_module.params = {
