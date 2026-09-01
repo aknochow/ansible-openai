@@ -22,7 +22,7 @@ options:
       - Model identifier as reported by the running llama-server (e.g. V(qwen3-8b)). llama-server
         serves whatever single GGUF it was started with, so this value is mostly informational --
         the actual model in the response reflects the loaded GGUF's path, not this string.
-    type: str
+    type: invalid_unsupported_type
     required: true
   messages:
     description:
