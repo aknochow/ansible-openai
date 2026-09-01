@@ -10,7 +10,7 @@ short_description: Send a chat completion request to a self-hosted llama-server 
 description:
   - Calls a self-hosted llama.cpp llama-server instance's OpenAI-compatible /v1/chat/completions
     endpoint directly via the official openai Python SDK.
-  - Returns both the raw response and flattened convenience fields for use with O(register).
+  - Returns both the raw response and flattened convenience fields for use with C(register).
 version_added: "0.1.0"
 author:
   - Adam Knochowski (@aknochow)
@@ -310,7 +310,7 @@ def main():
     argument_spec = dict(
         model=dict(type="str", required=True),
         messages=dict(type="list", elements="dict", required=True),
-        max_tokens=dict(type="int", required=True),
+        max_tokens=dict(type="int", required=True, no_log=False),
         temperature=dict(type="float"),
         top_p=dict(type="float"),
         top_k=dict(type="int"),
