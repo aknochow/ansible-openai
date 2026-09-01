@@ -19,6 +19,7 @@ options:
         unless overridden.
       - If the value is not specified, the value of the E(ANSIBLE_OPENAI_API_KEY) environment variable will be used.
     type: str
+    default: not-needed
   timeout:
     description:
       - Per-request timeout in seconds.
