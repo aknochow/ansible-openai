@@ -1,1 +1,0 @@
-plugins/modules/chat.py validate-modules:missing-gplv3-license

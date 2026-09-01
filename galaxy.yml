@@ -6,6 +6,7 @@ authors:
   - Adam Knochowski <aknochow@redhat.com>
 description: Ansible modules for calling any OpenAI-compatible chat completions endpoint (self-hosted llama.cpp, Ollama, vLLM, etc.) directly via the official openai Python SDK.
 license:
+  - GPL-3.0-or-later
   - Apache-2.0
 repository: https://github.com/aknochow/ansible-openai
 tags:
