@@ -28,9 +28,7 @@ def get_client(module: AnsibleModule):
     try:
         from openai import OpenAI
     except ImportError:
-        module.fail_json(
-            msg="The openai Python SDK is required. Install it with: pip install openai"
-        )
+        module.fail_json(msg="The openai Python SDK is required. Install it with: pip install openai")
         return
 
     base_url = module.params["base_url"]

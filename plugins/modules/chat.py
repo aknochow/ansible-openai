@@ -216,7 +216,6 @@ usage:
 import json
 
 from ansible.module_utils.basic import AnsibleModule
-
 from ansible_collections.aknochow.openai.plugins.module_utils.llama_client import (
     PROVIDER_ARGSPEC,
     get_client,
