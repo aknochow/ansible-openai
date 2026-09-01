@@ -320,3 +320,8 @@ llama-server instances (Qwen3-8B on Homebrew's stable build, Qwen3.8-27B
 requiring a from-source HEAD build for its newer architecture) for basic
 calls, structured output, and tool calling — see
 `examples/benchmark_tasks.yml` for a runnable live smoke test.
+
+## License
+
+- **Modules** (`plugins/modules/`): GNU General Public License v3.0+ (`GPL-3.0-or-later`)
+- **Module Utilities, Plugins, Doc Fragments, Tests & Documentation**: Apache License 2.0 (`Apache-2.0`)
