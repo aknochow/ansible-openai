@@ -12,9 +12,7 @@ def test_namespace_shim_registers_working_cleanup(namespace_shim_factory, monkey
     # (defined in conftest.py itself), sidestepping the sys.path/package-
     # resolution question entirely rather than picking a side of it.
     registered = []
-    monkeypatch.setattr(
-        atexit, "register", lambda fn, *args, **kwargs: registered.append((fn, args, kwargs))
-    )
+    monkeypatch.setattr(atexit, "register", lambda fn, *args, **kwargs: registered.append((fn, args, kwargs)))
 
     result = namespace_shim_factory("test_shim_", "llama", tmp_path)
     try:

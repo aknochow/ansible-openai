@@ -96,9 +96,7 @@ class TestFlattenResponse:
             flatten_response,
         )
 
-        response = make_response(
-            [make_choice(content="4", reasoning_content="Let me think... 2+2=4")]
-        )
+        response = make_response([make_choice(content="4", reasoning_content="Let me think... 2+2=4")])
         result = flatten_response(response)
 
         assert result["reasoning"] == "Let me think... 2+2=4"
@@ -124,9 +122,7 @@ class TestFlattenResponse:
             flatten_response,
         )
 
-        response = make_response(
-            [make_choice(content="4", reasoning="Let me think... 2+2=4")]
-        )
+        response = make_response([make_choice(content="4", reasoning="Let me think... 2+2=4")])
         result = flatten_response(response)
 
         assert result["reasoning"] == "Let me think... 2+2=4"
@@ -152,9 +148,7 @@ class TestFlattenResponse:
             flatten_response,
         )
 
-        response = make_response(
-            [make_choice(content='{"name": "bug-1", "severity": "high"}')]
-        )
+        response = make_response([make_choice(content='{"name": "bug-1", "severity": "high"}')])
         result = flatten_response(response, parse_structured=True)
 
         assert result["structured"] == {"name": "bug-1", "severity": "high"}
@@ -167,9 +161,7 @@ class TestFlattenResponse:
             flatten_response,
         )
 
-        response = make_response(
-            [make_choice(content='{"name": "bug-1", "severity": "high"}')]
-        )
+        response = make_response([make_choice(content='{"name": "bug-1", "severity": "high"}')])
         result = flatten_response(response)
 
         assert "structured" not in result
@@ -425,9 +417,7 @@ class TestMainRedactsSensitiveValuesFromExceptionMessages:
             "max_retries": 2,
         }
         monkeypatch.setattr(chat_module, "AnsibleModule", lambda **kwargs: fake_module)
-        mock_openai.OpenAI.return_value.chat.completions.create.side_effect = (
-            mock_openai.OpenAIError(exception_message)
-        )
+        mock_openai.OpenAI.return_value.chat.completions.create.side_effect = mock_openai.OpenAIError(exception_message)
 
         chat_module.main()
         return fake_module
@@ -590,9 +580,7 @@ class TestMainRequestConstruction:
                 },
             }
         ]
-        call_kwargs = self._run_main(
-            mock_openai, monkeypatch, {"tools": tools, "tool_choice": "required"}
-        )
+        call_kwargs = self._run_main(mock_openai, monkeypatch, {"tools": tools, "tool_choice": "required"})
 
         assert call_kwargs["tools"] == tools
         assert call_kwargs["tool_choice"] == "required"

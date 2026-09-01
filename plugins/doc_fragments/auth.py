@@ -4,7 +4,6 @@ from __future__ import annotations
 
 
 class ModuleDocFragment:
-
     DOCUMENTATION = r"""
 options:
   base_url:
