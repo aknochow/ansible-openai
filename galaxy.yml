@@ -20,8 +20,15 @@ dependencies: {}
 build_ignore:
   - .git
   - .github
-  - tests
+  - .agents
+  - .claude
+  - .ansible
   - .ansible-lint
+  - .gitignore
+  - .pre-commit-config.yaml
   - .pytest_cache
-  - __pycache__
   - .venv
+  - .yamllint
+  - __pycache__
+  - "*.egg-info"
+  - tests
