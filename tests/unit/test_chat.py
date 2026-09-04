@@ -241,7 +241,7 @@ class TestFlattenResponse:
         response = make_response([make_choice(content="hi")], usage_is_none=True)
         result = flatten_response(response)
 
-        assert result["usage"] == {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        assert result["usage"] == {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "cached_tokens": 0}
 
     def test_empty_choices_raises_value_error(self, mock_openai):
         # Regression check for a real review finding: response.choices[0]
@@ -298,6 +298,7 @@ class TestMainReportsChanged:
             "model": "qwen3-8b",
             "messages": [{"role": "user", "content": "hi"}],
             "max_tokens": 100,
+            "max_completion_tokens": None,
             "temperature": None,
             "top_p": None,
             "top_k": None,
@@ -332,6 +333,7 @@ class TestMainHandlesEmptyChoicesCleanly:
             "model": "qwen3-8b",
             "messages": [{"role": "user", "content": "hi"}],
             "max_tokens": 100,
+            "max_completion_tokens": None,
             "temperature": None,
             "top_p": None,
             "top_k": None,
@@ -369,6 +371,7 @@ class TestMainHandlesNoneClientCleanly:
             "model": "qwen3-8b",
             "messages": [{"role": "user", "content": "hi"}],
             "max_tokens": 100,
+            "max_completion_tokens": None,
             "temperature": None,
             "top_p": None,
             "top_k": None,
@@ -402,6 +405,7 @@ class TestMainRedactsSensitiveValuesFromExceptionMessages:
             "model": "qwen3-8b",
             "messages": [{"role": "user", "content": "hi"}],
             "max_tokens": 100,
+            "max_completion_tokens": None,
             "temperature": None,
             "top_p": None,
             "top_k": None,
@@ -415,6 +419,7 @@ class TestMainRedactsSensitiveValuesFromExceptionMessages:
             "api_key": "real-secret-key-value",
             "timeout": 120.0,
             "max_retries": 2,
+            "llama_server_mode": True,
         }
         monkeypatch.setattr(chat_module, "AnsibleModule", lambda **kwargs: fake_module)
         mock_openai.OpenAI.return_value.chat.completions.create.side_effect = mock_openai.OpenAIError(exception_message)
@@ -463,6 +468,7 @@ class TestMainRequestConstruction:
             "model": "qwen3-8b",
             "messages": [{"role": "user", "content": "hi"}],
             "max_tokens": 100,
+            "max_completion_tokens": None,
             "temperature": None,
             "top_p": None,
             "top_k": None,
@@ -494,6 +500,46 @@ class TestMainRequestConstruction:
         call_kwargs = self._run_main(mock_openai, monkeypatch, {})
 
         assert call_kwargs["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
+
+    def test_hosted_mode_omits_llama_server_extensions(self, mock_openai, monkeypatch):
+        call_kwargs = self._run_main(mock_openai, monkeypatch, {"llama_server_mode": False})
+
+        assert "extra_body" not in call_kwargs
+
+    def test_hosted_tool_calls_disable_reasoning_effort_by_default(self, mock_openai, monkeypatch):
+        tools = [{"type": "function", "function": {"name": "read_file", "parameters": {}}}]
+        call_kwargs = self._run_main(
+            mock_openai,
+            monkeypatch,
+            {"llama_server_mode": False, "tools": tools, "tool_choice": "auto"},
+        )
+
+        assert call_kwargs["reasoning_effort"] == "none"
+
+    def test_local_tool_calls_omit_reasoning_effort(self, mock_openai, monkeypatch):
+        tools = [{"type": "function", "function": {"name": "read_file", "parameters": {}}}]
+        call_kwargs = self._run_main(mock_openai, monkeypatch, {"tools": tools, "tool_choice": "auto"})
+
+        assert "reasoning_effort" not in call_kwargs
+
+    def test_explicit_reasoning_effort_is_forwarded(self, mock_openai, monkeypatch):
+        call_kwargs = self._run_main(
+            mock_openai,
+            monkeypatch,
+            {"llama_server_mode": False, "reasoning_effort": "low"},
+        )
+
+        assert call_kwargs["reasoning_effort"] == "low"
+
+    def test_max_completion_tokens_is_forwarded(self, mock_openai, monkeypatch):
+        call_kwargs = self._run_main(
+            mock_openai,
+            monkeypatch,
+            {"max_tokens": None, "max_completion_tokens": 256, "llama_server_mode": False},
+        )
+
+        assert call_kwargs["max_completion_tokens"] == 256
+        assert "max_tokens" not in call_kwargs
 
     def test_enable_thinking_true_is_passed_through(self, mock_openai, monkeypatch):
         call_kwargs = self._run_main(mock_openai, monkeypatch, {"enable_thinking": True})

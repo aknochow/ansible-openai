@@ -8,10 +8,10 @@ from __future__ import annotations
 DOCUMENTATION = r"""
 ---
 module: chat
-short_description: Send a chat completion request to a self-hosted llama-server and return the response
+short_description: Send a chat completion request to an OpenAI-compatible endpoint and return the response
 description:
-  - Calls a self-hosted llama.cpp llama-server instance's OpenAI-compatible /v1/chat/completions
-    endpoint directly via the official openai Python SDK.
+  - Calls an OpenAI-compatible /v1/chat/completions endpoint directly via the official openai Python SDK.
+  - The endpoint may be a local llama-server or the hosted OpenAI API.
   - Returns both the raw response and flattened convenience fields for use with C(register).
 version_added: "0.1.0"
 author:
@@ -39,7 +39,12 @@ options:
       - When O(enable_thinking=true), this budget is shared between the model's reasoning trace
         and its final answer -- see O(enable_thinking)'s own warning.
     type: int
-    required: true
+  max_completion_tokens:
+    description:
+      - Maximum number of completion tokens for newer OpenAI models. Use this
+        instead of C(max_tokens) when the endpoint requires the newer name.
+      - Exactly one of C(max_tokens) or C(max_completion_tokens) is required.
+    type: int
   temperature:
     description:
       - Sampling temperature.
@@ -79,6 +84,13 @@ options:
       - 'Controls tool-use behavior. Either a string (V(auto), V(none), V(required)) or a dict,
         e.g. C({"type": "function", "function": {"name": "..."}}) to force a specific tool.'
     type: raw
+  reasoning_effort:
+    description:
+      - Reasoning effort for OpenAI reasoning models.
+      - Hosted GPT-5.6 Chat Completions requires V(none) when function tools are present.
+      - When omitted in hosted mode, this module selects V(none) automatically for tool calls;
+        local llama-server mode does not receive this provider-specific parameter unless set.
+    type: str
   enable_thinking:
     description:
       - Whether to allow the model's internal reasoning/thinking trace before its final answer.
@@ -97,6 +109,13 @@ options:
         llama.cpp-specific sampling extensions (e.g. C(min_p), C(repeat_penalty)) not exposed
         as dedicated parameters above.
     type: dict
+  llama_server_mode:
+    description:
+      - Whether to inject llama.cpp-specific C(chat_template_kwargs.enable_thinking)
+        into C(extra_body). Set to false for the hosted OpenAI API or another
+        endpoint that does not accept llama.cpp request extensions.
+    type: bool
+    default: true
 extends_documentation_fragment:
   - aknochow.openai.auth
 requirements:
@@ -213,6 +232,9 @@ usage:
     total_tokens:
       description: Total tokens billed for this request.
       type: int
+    cached_tokens:
+      description: Input tokens served from the provider's prompt cache, when reported.
+      type: int
 """
 
 import json
@@ -289,9 +311,17 @@ def flatten_response(response, parse_structured=False):
             prompt_tokens=usage.prompt_tokens,
             completion_tokens=usage.completion_tokens,
             total_tokens=usage.total_tokens,
+            cached_tokens=(
+                getattr(getattr(usage, "prompt_tokens_details", None), "cached_tokens", 0)
+                if isinstance(
+                    getattr(getattr(usage, "prompt_tokens_details", None), "cached_tokens", 0),
+                    (int, float),
+                )
+                else 0
+            ),
         )
         if usage is not None
-        else dict(prompt_tokens=0, completion_tokens=0, total_tokens=0)
+        else dict(prompt_tokens=0, completion_tokens=0, total_tokens=0, cached_tokens=0)
     )
     result = dict(
         response=response.model_dump(),
@@ -311,7 +341,8 @@ def main():
     argument_spec = dict(
         model=dict(type="str", required=True),
         messages=dict(type="list", elements="dict", required=True),
-        max_tokens=dict(type="int", required=True, no_log=False),
+        max_tokens=dict(type="int", no_log=False),
+        max_completion_tokens=dict(type="int", no_log=False),
         temperature=dict(type="float"),
         top_p=dict(type="float"),
         top_k=dict(type="int"),
@@ -319,8 +350,10 @@ def main():
         response_format=dict(type="dict"),
         tools=dict(type="list", elements="dict"),
         tool_choice=dict(type="raw"),
+        reasoning_effort=dict(type="str"),
         enable_thinking=dict(type="bool"),
         extra_body=dict(type="dict"),
+        llama_server_mode=dict(type="bool", default=True),
     )
     argument_spec.update(PROVIDER_ARGSPEC)
 
@@ -345,42 +378,72 @@ def main():
     # collections keep their provider SDK imports out of top-level scope.
     from openai import OpenAIError
 
+    max_tokens = module.params.get("max_tokens")
+    max_completion_tokens = module.params.get("max_completion_tokens")
+    if max_tokens is None and max_completion_tokens is None:
+        module.fail_json(msg="one of max_tokens or max_completion_tokens is required")
+    if max_tokens is not None and max_completion_tokens is not None:
+        module.fail_json(msg="max_tokens and max_completion_tokens are mutually exclusive")
+
     kwargs = dict(
         model=module.params["model"],
         messages=module.params["messages"],
-        max_tokens=module.params["max_tokens"],
     )
+    if max_completion_tokens is not None:
+        kwargs["max_completion_tokens"] = max_completion_tokens
+    else:
+        kwargs["max_tokens"] = max_tokens
 
     for key in ("temperature", "top_p", "response_format", "tools", "tool_choice"):
         value = module.params.get(key)
         if value is not None:
             kwargs[key] = value
 
+    reasoning_effort = module.params.get("reasoning_effort")
+    if reasoning_effort is not None:
+        kwargs["reasoning_effort"] = reasoning_effort
+
     stop_sequences = module.params.get("stop_sequences")
     if stop_sequences is not None:
         kwargs["stop"] = stop_sequences
 
-    # enable_thinking is a hard default, not opt-in sugar -- it's always
-    # sent explicitly on every call (see
-    # choose-serving-setup-and-model-artifact / design-module-interface-
-    # mirroring-siblings: a thinking-capable model left on its template
-    # default can silently burn the whole max_tokens budget on reasoning
-    # and never emit an answer). Precedence: an explicitly-set top-level
-    # enable_thinking always wins; otherwise an explicit value the caller
-    # already put in extra_body.chat_template_kwargs is honored instead of
-    # being silently clobbered back to the false default; only fall back
-    # to false when neither was set anywhere.
     extra_body = dict(module.params.get("extra_body") or {})
-    top_k = module.params.get("top_k")
-    if top_k is not None:
-        extra_body["top_k"] = top_k
-    chat_template_kwargs = dict(extra_body.get("chat_template_kwargs") or {})
-    enable_thinking = module.params.get("enable_thinking")
-    if enable_thinking is None:
-        enable_thinking = chat_template_kwargs.get("enable_thinking", False)
-    chat_template_kwargs["enable_thinking"] = enable_thinking
-    extra_body["chat_template_kwargs"] = chat_template_kwargs
-    kwargs["extra_body"] = extra_body
+    # llama_server_mode is enabled by default for backwards compatibility
+    # with this collection's original local llama-server contract. Hosted
+    # OpenAI requests must opt out: chat_template_kwargs is a llama.cpp
+    # extension, not part of the OpenAI API request schema.
+    if module.params.get("llama_server_mode", True) is False:
+        # GPT-5.6's Chat Completions endpoint rejects its default reasoning
+        # effort when function tools are present. The hosted API requires
+        # reasoning_effort="none" for that combination; make the safe
+        # compatibility choice automatically unless the caller explicitly
+        # selected an effort. Local llama-server mode must not receive this
+        # OpenAI-specific field, so the default is scoped to hosted mode.
+        if reasoning_effort is None and module.params.get("tools"):
+            kwargs["reasoning_effort"] = "none"
+        if extra_body:
+            kwargs["extra_body"] = extra_body
+    else:
+        # enable_thinking is a hard default, not opt-in sugar -- it's always
+        # sent explicitly on every call (see
+        # choose-serving-setup-and-model-artifact / design-module-interface-
+        # mirroring-siblings: a thinking-capable model left on its template
+        # default can silently burn the whole max_tokens budget on reasoning
+        # and never emit an answer). Precedence: an explicitly-set top-level
+        # enable_thinking always wins; otherwise an explicit value the caller
+        # already put in extra_body.chat_template_kwargs is honored instead of
+        # being silently clobbered back to the false default; only fall back
+        # to false when neither was set anywhere.
+        top_k = module.params.get("top_k")
+        if top_k is not None:
+            extra_body["top_k"] = top_k
+        chat_template_kwargs = dict(extra_body.get("chat_template_kwargs") or {})
+        enable_thinking = module.params.get("enable_thinking")
+        if enable_thinking is None:
+            enable_thinking = chat_template_kwargs.get("enable_thinking", False)
+        chat_template_kwargs["enable_thinking"] = enable_thinking
+        extra_body["chat_template_kwargs"] = chat_template_kwargs
+        kwargs["extra_body"] = extra_body
 
     try:
         response = client.chat.completions.create(**kwargs)
