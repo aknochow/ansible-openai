@@ -511,10 +511,32 @@ class TestMainRequestConstruction:
         call_kwargs = self._run_main(
             mock_openai,
             monkeypatch,
-            {"llama_server_mode": False, "tools": tools, "tool_choice": "auto"},
+            {
+                "model": "gpt-5.6-luna",
+                "llama_server_mode": False,
+                "tools": tools,
+                "tool_choice": "auto",
+            },
         )
 
         assert call_kwargs["reasoning_effort"] == "none"
+
+    def test_hosted_non_gpt56_tool_calls_omit_reasoning_effort_by_default(
+        self, mock_openai, monkeypatch
+    ):
+        tools = [{"type": "function", "function": {"name": "read_file", "parameters": {}}}]
+        call_kwargs = self._run_main(
+            mock_openai,
+            monkeypatch,
+            {
+                "model": "gpt-4.1",
+                "llama_server_mode": False,
+                "tools": tools,
+                "tool_choice": "auto",
+            },
+        )
+
+        assert "reasoning_effort" not in call_kwargs
 
     def test_local_tool_calls_omit_reasoning_effort(self, mock_openai, monkeypatch):
         tools = [{"type": "function", "function": {"name": "read_file", "parameters": {}}}]

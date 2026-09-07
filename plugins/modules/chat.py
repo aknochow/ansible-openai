@@ -417,9 +417,12 @@ def main():
         # effort when function tools are present. The hosted API requires
         # reasoning_effort="none" for that combination; make the safe
         # compatibility choice automatically unless the caller explicitly
-        # selected an effort. Local llama-server mode must not receive this
-        # OpenAI-specific field, so the default is scoped to hosted mode.
-        if reasoning_effort is None and module.params.get("tools"):
+        # selected an effort. Other hosted-compatible models/providers may
+        # reject this provider-specific field, so only apply the default to
+        # GPT-5.6 model identifiers. Local llama-server mode must not receive
+        # this OpenAI-specific field, so the default is scoped to hosted mode.
+        model = str(module.params["model"]).lower()
+        if reasoning_effort is None and module.params.get("tools") and model.startswith("gpt-5.6"):
             kwargs["reasoning_effort"] = "none"
         if extra_body:
             kwargs["extra_body"] = extra_body
