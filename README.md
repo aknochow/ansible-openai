@@ -1,7 +1,8 @@
 # aknochow.openai
 
-Ansible collection for calling a self-hosted [llama.cpp](https://github.com/ggml-org/llama.cpp)
-`llama-server` instance directly via the official
+Ansible collection for calling a hosted OpenAI API or any OpenAI-compatible
+endpoint—including a self-hosted [llama.cpp](https://github.com/ggml-org/llama.cpp)
+`llama-server` instance—directly via the official
 [openai Python SDK](https://pypi.org/project/openai/) — llama-server exposes
 an OpenAI-compatible `/v1/chat/completions` endpoint, so the official OpenAI
 SDK pointed at a local `base_url` is the natural client, the same way
@@ -45,8 +46,25 @@ separate, later effort — not started here.
 pip install openai
 ```
 
-Plus a running `llama-server` instance — this collection does not manage
-its lifecycle, start it yourself first:
+For local use, this collection does not manage the `llama-server` lifecycle;
+start it yourself first. Hosted OpenAI use only needs an API key and a
+`base_url` of `https://api.openai.com/v1`:
+
+```yaml
+- name: Hosted OpenAI chat completion
+  aknochow.openai.chat:
+    base_url: https://api.openai.com/v1
+    api_key: "{{ lookup('ansible.builtin.env', 'OPENAI_API_KEY') }}"
+    model: gpt-5.6
+    max_completion_tokens: 1024
+    llama_server_mode: false
+    messages:
+      - role: user
+        content: "Summarize this changelog in one sentence: {{ changelog }}"
+  register: result
+```
+
+The local setup below is for a running `llama-server` instance:
 
 ```bash
 # Homebrew's stable bottle works for established model architectures.
