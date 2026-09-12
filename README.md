@@ -1,5 +1,7 @@
 # aknochow.openai
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/aknochow/ansible-openai/badge)](https://scorecard.dev/viewer/?uri=github.com/aknochow/ansible-openai)
+
 Ansible collection for calling a hosted OpenAI API or any OpenAI-compatible
 endpoint—including a self-hosted [llama.cpp](https://github.com/ggml-org/llama.cpp)
 `llama-server` instance—directly via the official
