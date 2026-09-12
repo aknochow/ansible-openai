@@ -48,6 +48,12 @@ separate, later effort — not started here.
 pip install openai
 ```
 
+Install the collection itself from Galaxy (`ansible-galaxy collection install
+aknochow.openai`) or, in a venv, as a pip wheel that lands on Ansible's
+`ansible_collections` sys.path (`pip install .` from this checkout). The PyPI
+name is `aknochow-openai`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the
+wheel layout and a two-collection smoke test.
+
 For local use, this collection does not manage the `llama-server` lifecycle;
 start it yourself first. Hosted OpenAI use only needs an API key and a
 `base_url` of `https://api.openai.com/v1`:
