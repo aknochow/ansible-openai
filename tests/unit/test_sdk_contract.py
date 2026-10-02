@@ -18,8 +18,13 @@ def test_client_accepts_base_url_and_api_key():
     from openai import OpenAI, OpenAIError
 
     params = inspect.signature(OpenAI).parameters
-    assert "api_key" in params
-    assert "base_url" in params
-    assert "timeout" in params
-    assert "max_retries" in params
+    for name in ("api_key", "base_url", "timeout", "max_retries"):
+        assert name in params
+        assert params[name].kind is not inspect.Parameter.POSITIONAL_ONLY
+    OpenAI(
+        api_key="test-key",
+        base_url="https://example.invalid/v1",
+        timeout=1.0,
+        max_retries=1,
+    )
     assert issubclass(OpenAIError, Exception)
