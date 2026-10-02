@@ -11,7 +11,7 @@ from packaging.version import Version
 
 
 def test_installed_sdk_meets_the_collection_floor():
-    assert Version(version("openai")) >= Version("1.58.0")
+    assert Version(version("openai")) >= Version("3.23.0")
 
 
 def test_client_accepts_base_url_and_api_key():
